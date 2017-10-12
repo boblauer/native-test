@@ -1,0 +1,89 @@
+<html>
+  <head>
+    <style>
+      body {
+        padding: 50px;
+      }
+
+      button {
+        padding: 20px;
+      }
+
+      textarea {
+        width: 80%;
+        height: 300px;
+      }
+    </style>
+  </head>
+  <body>
+    The following button will make a call to native with the payload:
+
+    <pre>
+      {
+        methodName: "nativeTest",
+        payload: "Hello World!"
+      }
+    </pre>
+
+    <button id="callToNative">
+      Send to native
+    </button>
+
+    <br /><br /><br /><br />
+
+    The follow text area will show calls received from native:
+    <br /><br />
+    <textarea id="fromNative"></textarea>
+    <script>
+      var root = window;
+      var store;
+      var nativeCallHandlers = [];
+
+      function initNativeCalls(_store, _nativeCallHandlers) {
+        if (!Array.isArray(_nativeCallHandlers)) throw new Error('Invalid Function Array.');
+        store = _store;
+        nativeCallHandlers = _nativeCallHandlers;
+      }
+
+      function callJavaScript(message) {
+        var payload;
+        try {
+          payload = JSON.parse(message);
+        } catch(e) {
+          throw new Error('Invalid JSON received from a native call: ' + message);
+        }
+
+        nativeCallHandlers.forEach(function(fn) {
+          fn(payload, store);
+        });
+      }
+
+      root.callJavaScript = callJavaScript;
+
+      function callNative(action) {
+        var stringifiedAction = JSON.stringify(action);
+        if (root.webkit) {
+          root.webkit.messageHandlers.callNative.postMessage(stringifiedAction);
+        } else if (root.Android) {
+          root.Android.callNative(stringifiedAction);
+        } else {
+          alert('No native bridge found.  Action is: ' + stringifiedAction);
+        }
+      }
+
+      document.getElementById('callToNative').addEventListener('click', function() {
+        callNative({
+          method: 'nativeTest',
+          payload: 'Hello World!'
+        });
+      });
+
+      initNativeCalls({}, [
+        function(payload) {
+          var el = document.getElementById('fromNative');
+          el.value = el.value + '\n- - - - - - - -\n' + JSON.stringify(payload);
+        }
+      ]);
+    </script>
+  </body>
+</html>
